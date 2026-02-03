@@ -3,10 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <title>YouTube Playlist Shuffler</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 20px;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
+
   <h1>YouTube Playlist Shuffler</h1>
-  <p>Your site is live 🎉</p>
-  <p>Next step: connect a playlist and shuffle it.</p>
+
+  <p>Paste a YouTube playlist link below:</p>
+
+  <input
+    id="playlistInput"
+    type="text"
+    placeholder="https://www.youtube.com/playlist?list=..."
+  >
+
+  <button onclick="handleShuffle()">Shuffle Playlist</button>
+
+  <div id="status"></div>
+
+  <script>
+    function handleShuffle() {
+      const input = document.getElementById("playlistInput").value.trim();
+      const status = document.getElementById("status");
+
+      if (!input) {
+        status.textContent = "Please paste a playlist URL.";
+        return;
+      }
+
+      status.textContent = "Playlist link received ✔️";
+    }
+  </script>
+
 </body>
 </html>
