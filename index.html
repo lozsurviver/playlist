@@ -45,6 +45,7 @@
   <div id="status"></div>
 
 <script>
+  const apiKey = "AIzaSyCQF4Xz6SGtuvv4PyiuNxZ0LvgEeZ4A_lc"; // replace with your API key
   function extractPlaylistId(url) {
     try {
       const parsedUrl = new URL(url);
@@ -53,28 +54,66 @@
       return null;
     }
   }
+  async function fetchPlaylistVideos(playlistId) {
+  let videos = [];
+  let nextPageToken = "";
 
-  function handleShuffle() {
-    const input = document.getElementById("playlistInput").value.trim();
-    const status = document.getElementById("status");
+  do {
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&pageToken=${nextPageToken}&key=${apiKey}`
+    );
+    const data = await response.json();
+    
+    if (!data.items) break;
 
-    if (!input) {
-      status.textContent = "Please paste a playlist URL.";
-      return;
-    }
+    videos.push(...data.items.map(item => item.snippet.resourceId.videoId));
+    nextPageToken = data.nextPageToken || "";
+  } while (nextPageToken);
 
-    const playlistId = extractPlaylistId(input);
+  return videos;
+}
 
-    if (!playlistId) {
-      status.textContent = "Invalid playlist URL. Please try again.";
-      return;
-    }
+  async function handleShuffle() {
+  const input = document.getElementById("playlistInput").value.trim();
+  const status = document.getElementById("status");
 
-    status.innerHTML = `
-      Playlist detected ✅<br>
-      <strong>Playlist ID:</strong> ${playlistId}
-    `;
+  if (!input) {
+    status.textContent = "Please paste a playlist URL.";
+    return;
   }
+
+  const playlistId = extractPlaylistId(input);
+  if (!playlistId) {
+    status.textContent = "Invalid playlist URL. Please try again.";
+    return;
+  }
+
+  status.textContent = "Fetching videos... ⏳";
+
+  try {
+    const videos = await fetchPlaylistVideos(playlistId);
+
+    if (videos.length === 0) {
+      status.textContent = "No videos found in this playlist.";
+      return;
+    }
+
+    // Pick a random video
+    const randomVideo = videos[Math.floor(Math.random() * videos.length)];
+
+    // Embed the video
+    status.innerHTML = `
+      Playlist loaded ✅<br>
+      <iframe width="560" height="315"
+        src="https://www.youtube.com/embed/${randomVideo}?autoplay=1"
+        frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
+      </iframe>
+    `;
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Error fetching playlist videos. Check your API key and playlist URL.";
+  }
+}
 </script>
 </body>
 </html>
