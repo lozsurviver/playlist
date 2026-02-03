@@ -44,19 +44,37 @@
 
   <div id="status"></div>
 
-  <script>
-    function handleShuffle() {
-      const input = document.getElementById("playlistInput").value.trim();
-      const status = document.getElementById("status");
-
-      if (!input) {
-        status.textContent = "Please paste a playlist URL.";
-        return;
-      }
-
-      status.textContent = "Playlist link received ✔️";
+<script>
+  function extractPlaylistId(url) {
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.searchParams.get("list");
+    } catch {
+      return null;
     }
-  </script>
+  }
 
+  function handleShuffle() {
+    const input = document.getElementById("playlistInput").value.trim();
+    const status = document.getElementById("status");
+
+    if (!input) {
+      status.textContent = "Please paste a playlist URL.";
+      return;
+    }
+
+    const playlistId = extractPlaylistId(input);
+
+    if (!playlistId) {
+      status.textContent = "Invalid playlist URL. Please try again.";
+      return;
+    }
+
+    status.innerHTML = `
+      Playlist detected ✅<br>
+      <strong>Playlist ID:</strong> ${playlistId}
+    `;
+  }
+</script>
 </body>
 </html>
