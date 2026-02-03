@@ -71,16 +71,52 @@
   } while (nextPageToken);
 
   return videos;
-}
+}// Your default playlists
+const defaultPlaylists = [
+  "PLAYLIST_ID_1",
+  "PLAYLIST_ID_2",
+  "PLAYLIST_ID_3"
+];
 
-  async function handleShuffle() {
-  const input = document.getElementById("playlistInput").value.trim();
-  const status = document.getElementById("status");
-
-  if (!input) {
-    status.textContent = "Please paste a playlist URL.";
-    return;
+// Automatically set the input field to the first playlist by default
+window.addEventListener("load", () => {
+  if (defaultPlaylists.length > 0) {
+    document.getElementById("playlistInput").value = `https://www.youtube.com/playlist?list=${defaultPlaylists[0]}`;
   }
+});
+
+async function handleShuffle() {
+  const status = document.getElementById("status");
+  status.textContent = "Fetching videos... ⏳";
+
+  try {
+    // Fetch videos from all default playlists
+    let allVideos = [];
+    for (const playlistId of defaultPlaylists) {
+      const videos = await fetchPlaylistVideos(playlistId);
+      allVideos.push(...videos);
+    }
+
+    if (allVideos.length === 0) {
+      status.textContent = "No videos found in the playlists.";
+      return;
+    }
+
+    // Pick a random video from all playlists
+    const randomVideo = allVideos[Math.floor(Math.random() * allVideos.length)];
+
+    // Embed the video
+    status.innerHTML = `
+      <iframe width="560" height="315"
+        src="https://www.youtube.com/embed/${randomVideo}?autoplay=1"
+        frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
+      </iframe>
+    `;
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Error fetching playlist videos. Check your API key and playlist URLs.";
+  }
+}
 
   const playlistId = extractPlaylistId(input);
   if (!playlistId) {
