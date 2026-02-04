@@ -29,14 +29,8 @@
       margin: 20px 0;
     }
 
-    iframe {
-      width: 100%;
-      max-width: 720px;
-      height: 405px;
-    }
-
     #status {
-      margin-top: 20px;
+      margin-top: 15px;
       color: #555;
     }
 
@@ -71,95 +65,113 @@
 </head>
 <body>
 
-  <h1>YouTube Playlist Shuffler</h1>
+<h1>YouTube Playlist Shuffler</h1>
 
-  <div style="text-align:center;">
-    <button onclick="handleShuffle()">Shuffle & Play</button>
-    <button onclick="handleNextShuffle()">Next Shuffle</button>
-  </div>
+<div style="text-align:center;">
+  <button onclick="startShuffle()">Shuffle & Play</button>
+  <button onclick="nextShuffle()">Next Shuffle</button>
+</div>
 
-  <!-- 🎬 YouTube Player -->
-  <div id="player-container">
-    <iframe
-      id="youtubePlayer"
-      src=""
-      frameborder="0"
-      allow="autoplay; encrypted-media"
-      allowfullscreen>
-    </iframe>
-  </div>
+<div id="player-container">
+  <div id="player"></div>
+</div>
 
-  <div id="status">Loading videos...</div>
+<div id="status">Loading videos...</div>
 
-  <ul id="videoList"></ul>
+<ul id="videoList"></ul>
 
-  <script>
-    let allVideos = [];
-    let currentShuffle = [];
+<!-- YouTube Player API -->
+<script src="https://www.youtube.com/iframe_api"></script>
 
-    async function loadVideosFromJSON() {
-      try {
-        const response = await fetch("videos.json");
-        const data = await response.json();
-        allVideos = data.videos;
+<script>
+  let allVideos = [];
+  let shuffledVideos = [];
+  let currentIndex = 0;
+  let player;
 
-        console.log("First video check:", allVideos[0]); // debug check
-        document.getElementById("status").textContent =
-          `Loaded ${allVideos.length} videos ✅`;
-      } catch (err) {
-        console.error(err);
-        document.getElementById("status").textContent =
-          "Failed to load videos.json";
+  async function loadVideosFromJSON() {
+    const response = await fetch("videos.json");
+    const data = await response.json();
+    allVideos = data.videos;
+
+    console.log("First video check:", allVideos[0]);
+    document.getElementById("status").textContent =
+      `Loaded ${allVideos.length} videos ✅`;
+  }
+
+  function shuffleVideos() {
+    shuffledVideos = [...allVideos];
+    for (let i = shuffledVideos.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledVideos[i], shuffledVideos[j]] =
+      [shuffledVideos[j], shuffledVideos[i]];
+    }
+    currentIndex = 0;
+  }
+
+  function renderList(count = 10) {
+    const list = document.getElementById("videoList");
+    list.innerHTML = "";
+
+    for (let i = currentIndex; i < Math.min(currentIndex + count, shuffledVideos.length); i++) {
+      const v = shuffledVideos[i];
+      const li = document.createElement("li");
+
+      li.innerHTML = `
+        <a class="video-link" href="#" onclick="playAtIndex(${i})">
+          <img src="${v.thumbnail}" alt="${v.title}">
+          <span>${v.title}</span>
+        </a>
+      `;
+      list.appendChild(li);
+    }
+  }
+
+  function playAtIndex(index) {
+    currentIndex = index;
+    player.loadVideoById(shuffledVideos[currentIndex].id);
+    renderList();
+  }
+
+  function playNextVideo() {
+    currentIndex++;
+    if (currentIndex < shuffledVideos.length) {
+      player.loadVideoById(shuffledVideos[currentIndex].id);
+      renderList();
+    }
+  }
+
+  function startShuffle() {
+    shuffleVideos();
+    player.loadVideoById(shuffledVideos[0].id);
+    renderList();
+  }
+
+  function nextShuffle() {
+    shuffleVideos();
+    player.loadVideoById(shuffledVideos[0].id);
+    renderList();
+  }
+
+  // YouTube API callback
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player("player", {
+      height: "405",
+      width: "720",
+      events: {
+        onStateChange: onPlayerStateChange
       }
+    });
+  }
+
+  function onPlayerStateChange(event) {
+    if (event.data === YT.PlayerState.ENDED) {
+      playNextVideo();
     }
+  }
 
-    function shuffleVideos() {
-      currentShuffle = [...allVideos];
-      for (let i = currentShuffle.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [currentShuffle[i], currentShuffle[j]] =
-        [currentShuffle[j], currentShuffle[i]];
-      }
-    }
-
-    function playVideo(videoId) {
-      const player = document.getElementById("youtubePlayer");
-      player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    }
-
-    function renderVideoList(count = 10) {
-      const list = document.getElementById("videoList");
-      list.innerHTML = "";
-
-      for (let i = 0; i < Math.min(count, currentShuffle.length); i++) {
-        const v = currentShuffle[i];
-
-        const li = document.createElement("li");
-        li.innerHTML = `
-          <a class="video-link" href="#" onclick="playVideo('${v.id}')">
-            <img src="${v.thumbnail}" alt="${v.title}">
-            <span>${v.title}</span>
-          </a>
-        `;
-        list.appendChild(li);
-      }
-    }
-
-    function handleShuffle() {
-      if (allVideos.length === 0) return;
-      shuffleVideos();
-      playVideo(currentShuffle[0].id);
-      renderVideoList();
-    }
-
-    function handleNextShuffle() {
-      shuffleVideos();
-      playVideo(currentShuffle[0].id);
-      renderVideoList();
-    }
-
-    window.onload = loadVideosFromJSON;
-  </script>
+  window.onload = loadVideosFromJSON;
+</script>
 
 </body>
 </html>
