@@ -4,43 +4,67 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube Playlist Shuffler</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 700px;
+      max-width: 900px;
       margin: 40px auto;
       padding: 20px;
     }
+
     h1 {
       text-align: center;
     }
+
     button {
-      margin-top: 10px;
+      margin: 10px 5px;
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
     }
+
+    #player-container {
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    iframe {
+      width: 100%;
+      max-width: 720px;
+      height: 405px;
+    }
+
     #status {
       margin-top: 20px;
       color: #555;
     }
-    ol li {
-      margin-bottom: 10px;
-      list-style: none;
+
+    ul {
+      padding: 0;
+      margin-top: 20px;
     }
-    a {
-      color: #1a73e8;
-      text-decoration: none;
+
+    li {
+      list-style: none;
+      margin-bottom: 12px;
+    }
+
+    a.video-link {
       display: flex;
       align-items: center;
+      text-decoration: none;
+      color: #1a73e8;
     }
-    a img {
-      margin-right: 10px;
+
+    a.video-link img {
       width: 120px;
       height: 90px;
+      margin-right: 10px;
       object-fit: cover;
     }
-    a:hover {
+
+    a.video-link:hover {
       text-decoration: underline;
     }
   </style>
@@ -49,80 +73,91 @@
 
   <h1>YouTube Playlist Shuffler</h1>
 
-  <div>
-    <button onclick="handleShuffle()">Shuffle Playlist</button>
+  <div style="text-align:center;">
+    <button onclick="handleShuffle()">Shuffle & Play</button>
     <button onclick="handleNextShuffle()">Next Shuffle</button>
+  </div>
+
+  <!-- 🎬 YouTube Player -->
+  <div id="player-container">
+    <iframe
+      id="youtubePlayer"
+      src=""
+      frameborder="0"
+      allow="autoplay; encrypted-media"
+      allowfullscreen>
+    </iframe>
   </div>
 
   <div id="status">Loading videos...</div>
 
-  <script>
-    let allVideos = [];      // Stores all videos from videos.json
-    let currentShuffle = []; // Current shuffled playlist
+  <ul id="videoList"></ul>
 
-    // Load videos.json
+  <script>
+    let allVideos = [];
+    let currentShuffle = [];
+
     async function loadVideosFromJSON() {
       try {
         const response = await fetch("videos.json");
         const data = await response.json();
         allVideos = data.videos;
 
-        console.log("First video object check:", allVideos[0]); // <-- extra check
-        document.getElementById("status").textContent = `Loaded ${allVideos.length} videos ✅`;
+        console.log("First video check:", allVideos[0]); // debug check
+        document.getElementById("status").textContent =
+          `Loaded ${allVideos.length} videos ✅`;
       } catch (err) {
-        console.error("Error loading videos.json:", err);
-        document.getElementById("status").textContent = "Failed to load videos.json";
+        console.error(err);
+        document.getElementById("status").textContent =
+          "Failed to load videos.json";
       }
     }
 
-    // Shuffle using Fisher-Yates algorithm
     function shuffleVideos() {
       currentShuffle = [...allVideos];
       for (let i = currentShuffle.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [currentShuffle[i], currentShuffle[j]] = [currentShuffle[j], currentShuffle[i]];
+        [currentShuffle[i], currentShuffle[j]] =
+        [currentShuffle[j], currentShuffle[i]];
       }
     }
 
-    // Display first N shuffled videos with thumbnail and title
-    function displayShuffledVideos(count = 10) {
-      const status = document.getElementById("status");
-      if (currentShuffle.length === 0) {
-        status.textContent = "No videos to shuffle.";
-        return;
-      }
+    function playVideo(videoId) {
+      const player = document.getElementById("youtubePlayer");
+      player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    }
 
-      let html = "<h3>Shuffled Playlist:</h3><ol>";
+    function renderVideoList(count = 10) {
+      const list = document.getElementById("videoList");
+      list.innerHTML = "";
+
       for (let i = 0; i < Math.min(count, currentShuffle.length); i++) {
-        const video = currentShuffle[i];
-        html += `<li>
-          <a href="https://www.youtube.com/watch?v=${video.id}" target="_blank">
-            <img src="${video.thumbnail}" alt="${video.title}">
-            <span>${video.title}</span>
+        const v = currentShuffle[i];
+
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <a class="video-link" href="#" onclick="playVideo('${v.id}')">
+            <img src="${v.thumbnail}" alt="${v.title}">
+            <span>${v.title}</span>
           </a>
-        </li>`;
+        `;
+        list.appendChild(li);
       }
-      html += "</ol>";
-      status.innerHTML = html;
     }
 
-    // Shuffle button
     function handleShuffle() {
-      if (allVideos.length === 0) {
-        document.getElementById("status").textContent = "Videos not loaded yet.";
-        return;
-      }
+      if (allVideos.length === 0) return;
       shuffleVideos();
-      displayShuffledVideos();
+      playVideo(currentShuffle[0].id);
+      renderVideoList();
     }
 
-    // Next shuffle button
     function handleNextShuffle() {
       shuffleVideos();
-      displayShuffledVideos();
+      playVideo(currentShuffle[0].id);
+      renderVideoList();
     }
 
-    // Load videos.json on page load
     window.onload = loadVideosFromJSON;
   </script>
 
