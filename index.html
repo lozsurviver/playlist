@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube Playlist Shuffler</title>
   <style>
     body {
@@ -10,14 +11,11 @@
       margin: 40px auto;
       padding: 20px;
     }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      font-size: 16px;
+    h1 {
+      text-align: center;
     }
     button {
-      margin-top: 15px;
+      margin-top: 10px;
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
@@ -26,137 +24,91 @@
       margin-top: 20px;
       color: #555;
     }
+    ol li {
+      margin-bottom: 5px;
+    }
+    a {
+      color: #1a73e8;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
 
   <h1>YouTube Playlist Shuffler</h1>
 
-  <p>Paste a YouTube playlist link below:</p>
+  <div>
+    <button onclick="handleShuffle()">Shuffle Playlist</button>
+    <button onclick="handleNextShuffle()">Next Shuffle</button>
+  </div>
 
-  <input
-    id="playlistInput"
-    type="text"
-    placeholder="https://www.youtube.com/playlist?list=..."
-  >
+  <div id="status">Loading videos...</div>
 
-  <button onclick="handleShuffle()">Shuffle Playlist</button>
+  <script>
+    let allVideos = []; // All video IDs
+    let currentShuffle = []; // Current shuffled playlist
 
-  <div id="status"></div>
-
-<script>
-  const apiKey = "AIzaSyCQF4Xz6SGtuvv4PyiuNxZ0LvgEeZ4A_lc"; // replace with your API key
-  function extractPlaylistId(url) {
-    try {
-      const parsedUrl = new URL(url);
-      return parsedUrl.searchParams.get("list");
-    } catch {
-      return null;
-    }
-  }
-  async function fetchPlaylistVideos(playlistId) {
-  let videos = [];
-  let nextPageToken = "";
-
-  do {
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&pageToken=${nextPageToken}&key=${apiKey}`
-    );
-    const data = await response.json();
-    
-    if (!data.items) break;
-
-    videos.push(...data.items.map(item => item.snippet.resourceId.videoId));
-    nextPageToken = data.nextPageToken || "";
-  } while (nextPageToken);
-
-  return videos;
-}// Your default playlists
-const defaultPlaylists = [
-  "PLOa3aoQF4MhzXYlRoIDqhi20KIM_UI6Rb",
-  "PLOa3aoQF4MhzELdVUf4gxQ0X4fQoQX7no",
-  "PLOa3aoQF4MhwGTn8mMkJmIbpOIEilnItt",
-  "PLOa3aoQF4MhwUdcmkp8ZPe2E8woyQkAw6",
-  "PLOa3aoQF4Mhwr3ALm0Wv3eTRXe9ZuRe1k"
-];
-
-// Automatically set the input field to the first playlist by default
-window.addEventListener("load", () => {
-  if (defaultPlaylists.length > 0) {
-    document.getElementById("playlistInput").value = `https://www.youtube.com/playlist?list=${defaultPlaylists[0]}`;
-  }
-});
-
-async function handleShuffle() {
-  const status = document.getElementById("status");
-  status.textContent = "Fetching videos... ⏳";
-
-  try {
-    // Fetch videos from all default playlists
-    let allVideos = [];
-    for (const playlistId of defaultPlaylists) {
-      const videos = await fetchPlaylistVideos(playlistId);
-      allVideos.push(...videos);
+    // Load videos.json
+    async function loadVideosFromJSON() {
+      try {
+        const response = await fetch("videos.json");
+        const data = await response.json();
+        allVideos = data.videos;
+        document.getElementById("status").textContent = `Loaded ${allVideos.length} videos ✅`;
+        console.log(`Loaded ${allVideos.length} videos`);
+      } catch (err) {
+        console.error("Error loading videos.json:", err);
+        document.getElementById("status").textContent = "Failed to load videos.json";
+      }
     }
 
-    if (allVideos.length === 0) {
-      status.textContent = "No videos found in the playlists.";
-      return;
+    // Shuffle videos using Fisher-Yates algorithm
+    function shuffleVideos() {
+      currentShuffle = [...allVideos];
+      for (let i = currentShuffle.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [currentShuffle[i], currentShuffle[j]] = [currentShuffle[j], currentShuffle[i]];
+      }
     }
 
-    // Pick a random video from all playlists
-    const randomVideo = allVideos[Math.floor(Math.random() * allVideos.length)];
+    // Display first N shuffled videos
+    function displayShuffledVideos(count = 10) {
+      const status = document.getElementById("status");
+      if (currentShuffle.length === 0) {
+        status.textContent = "No videos to shuffle.";
+        return;
+      }
 
-    // Embed the video
-    status.innerHTML = `
-      <iframe width="560" height="315"
-        src="https://www.youtube.com/embed/${randomVideo}?autoplay=1"
-        frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
-      </iframe>
-    `;
-  } catch (err) {
-    console.error(err);
-    status.textContent = "Error fetching playlist videos. Check your API key and playlist URLs.";
-  }
-}
-
-  const playlistId = extractPlaylistId(input);
-  if (!playlistId) {
-    status.textContent = "Invalid playlist URL. Please try again.";
-    return;
-  }
-
-  status.textContent = "Fetching videos... ⏳";
-
-  try {
-    const videos = await fetchPlaylistVideos(playlistId);
-
-    if (videos.length === 0) {
-      status.textContent = "No videos found in this playlist.";
-      return;
+      let html = "<h3>Shuffled Playlist:</h3><ol>";
+      for (let i = 0; i < Math.min(count, currentShuffle.length); i++) {
+        const videoId = currentShuffle[i];
+        html += `<li><a href="https://www.youtube.com/watch?v=${videoId}" target="_blank">${videoId}</a></li>`;
+      }
+      html += "</ol>";
+      status.innerHTML = html;
     }
 
-    // Pick a random video
-    const randomVideo = videos[Math.floor(Math.random() * videos.length)];
+    // Button handlers
+    function handleShuffle() {
+      if (allVideos.length === 0) {
+        document.getElementById("status").textContent = "Videos not loaded yet.";
+        return;
+      }
+      shuffleVideos();
+      displayShuffledVideos();
+    }
 
-    // Embed the video
-    status.innerHTML = `
-      Playlist loaded ✅<br>
-      <iframe width="560" height="315"
-        src="https://www.youtube.com/embed/${randomVideo}?autoplay=1"
-        frameborder="0" allow="autoplay; encrypted-media" allowfullscreen>
-      </iframe>
-    `;
-  } catch (err) {
-    console.error(err);
-    status.textContent = "Error fetching playlist videos. Check your API key and playlist URL.";
-  }
-}
-  async function loadVideosFromJSON() {
-  const response = await fetch("videos.json");
-  const data = await response.json();
-  return data.videos;
-}
-</script>
+    function handleNextShuffle() {
+      shuffleVideos();
+      displayShuffledVideos();
+    }
+
+    // Load videos on page load
+    window.onload = loadVideosFromJSON;
+  </script>
+
 </body>
 </html>
