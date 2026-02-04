@@ -1,222 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube Playlist Shuffler</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube Playlist Shuffler</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 40px auto;
-      padding: 20px;
-    }
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #121212;
+    color: #e0e0e0;
+  }
 
-    h1 {
-      text-align: center;
-    }
+  header {
+    text-align: center;
+    padding: 16px;
+    font-size: 22px;
+    font-weight: bold;
+    border-bottom: 1px solid #333;
+  }
 
-    button {
-      margin: 10px 5px;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
+  main {
+    display: flex;
+    height: calc(100vh - 140px);
+  }
 
-    #player-container {
-      text-align: center;
-      margin: 20px 0;
-    }
+  #player-section {
+    flex: 2;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
 
-    #controls {
-      text-align: center;
-      margin-top: 10px;
-    }
+  #player {
+    width: 100%;
+    max-width: 720px;
+    aspect-ratio: 16 / 9;
+    background: black;
+  }
 
-    #volumeValue {
-      font-weight: bold;
-    }
+  #list-section {
+    flex: 1;
+    border-left: 1px solid #333;
+    overflow-y: auto;
+    padding: 20px;
+  }
 
-    #status {
-      margin-top: 15px;
-      color: #555;
-    }
+  .video-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    opacity: 0.85;
+  }
 
-    ul {
-      padding: 0;
-      margin-top: 20px;
-    }
+  .video-item:hover {
+    opacity: 1;
+  }
 
-    li {
-      list-style: none;
-      margin-bottom: 12px;
-    }
+  .video-item img {
+    width: 120px;
+    height: 90px;
+    object-fit: cover;
+  }
 
-    a.video-link {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      color: #1a73e8;
-    }
+  .video-title {
+    font-size: 14px;
+  }
 
-    a.video-link img {
-      width: 120px;
-      height: 90px;
-      margin-right: 10px;
-      object-fit: cover;
-    }
-  </style>
+  .active {
+    outline: 2px solid #1db954;
+  }
+
+  footer {
+    height: 100px;
+    border-top: 1px solid #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+  }
+
+  button {
+    background: #1f1f1f;
+    border: 1px solid #333;
+    color: #e0e0e0;
+    padding: 10px 14px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #2a2a2a;
+  }
+
+  input[type="range"] {
+    width: 120px;
+  }
+</style>
 </head>
+
 <body>
 
-<h1>YouTube Playlist Shuffler</h1>
+<header>YouTube Playlist Shuffler</header>
 
-<div style="text-align:center;">
-  <button onclick="startShuffle()">Shuffle & Play</button>
-  <button onclick="playNextVideo()">Skip Video</button>
-</div>
+<main>
+  <section id="player-section">
+    <div id="player"></div>
+  </section>
 
-<div id="player-container">
-  <div id="player"></div>
-</div>
+  <section id="list-section"></section>
+</main>
 
-<div id="controls">
-  🔊 Volume:
-  <input
-    type="range"
-    id="volumeSlider"
-    min="0"
-    max="100"
-    value="50"
-    oninput="setGlobalVolume(this.value)"
-  >
-  <span id="volumeValue">50</span>
-</div>
-
-<div id="status">Loading videos...</div>
-
-<ul id="videoList"></ul>
+<footer>
+  🔊
+  <input type="range" min="0" max="100" id="volumeSlider">
+  <button onclick="playPrevious()">⏮</button>
+  <button onclick="togglePlay()">⏯</button>
+  <button onclick="playNext()">⏭</button>
+  <button onclick="reshuffle()">🔀</button>
+</footer>
 
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
-  let allVideos = [];
-  let shuffledVideos = [];
-  let currentIndex = 0;
-  let player;
-  let skipInProgress = false;
+let allVideos = [];
+let shuffledVideos = [];
+let currentIndex = 0;
+let player;
+let isPlaying = true;
+let skipInProgress = false;
 
-  // Load saved volume or default to 50
-  let globalVolume = parseInt(localStorage.getItem("ytVolume")) || 50;
+let globalVolume = parseInt(localStorage.getItem("ytVolume")) || 50;
 
-  async function loadVideosFromJSON() {
-    const response = await fetch("videos.json");
-    const data = await response.json();
-    allVideos = data.videos;
+async function loadVideos() {
+  const res = await fetch("videos.json");
+  const data = await res.json();
+  allVideos = data.videos;
+  reshuffle();
+}
 
-    document.getElementById("status").textContent =
-      `Loaded ${allVideos.length} videos ✅`;
-
-    // Restore slider UI
-    document.getElementById("volumeSlider").value = globalVolume;
-    document.getElementById("volumeValue").textContent = globalVolume;
+function reshuffle() {
+  shuffledVideos = [...allVideos];
+  for (let i = shuffledVideos.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledVideos[i], shuffledVideos[j]] =
+    [shuffledVideos[j], shuffledVideos[i]];
   }
+  currentIndex = 0;
+  loadCurrent();
+}
 
-  function shuffleVideos() {
-    shuffledVideos = [...allVideos];
-    for (let i = shuffledVideos.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledVideos[i], shuffledVideos[j]] =
-      [shuffledVideos[j], shuffledVideos[i]];
-    }
-    currentIndex = 0;
+function loadCurrent() {
+  player.loadVideoById(shuffledVideos[currentIndex].id);
+  renderList();
+}
+
+function playNext() {
+  if (++currentIndex >= shuffledVideos.length) return;
+  loadCurrent();
+}
+
+function playPrevious() {
+  if (--currentIndex < 0) currentIndex = 0;
+  loadCurrent();
+}
+
+function togglePlay() {
+  if (isPlaying) {
+    player.pauseVideo();
+  } else {
+    player.playVideo();
   }
+  isPlaying = !isPlaying;
+}
 
-  function renderList(count = 10) {
-    const list = document.getElementById("videoList");
-    list.innerHTML = "";
+function renderList() {
+  const list = document.getElementById("list-section");
+  list.innerHTML = "";
 
-    for (let i = currentIndex; i < Math.min(currentIndex + count, shuffledVideos.length); i++) {
-      const v = shuffledVideos[i];
-      const li = document.createElement("li");
+  for (let i = currentIndex; i < Math.min(currentIndex + 15, shuffledVideos.length); i++) {
+    const v = shuffledVideos[i];
+    const div = document.createElement("div");
+    div.className = "video-item" + (i === currentIndex ? " active" : "");
+    div.onclick = () => {
+      currentIndex = i;
+      loadCurrent();
+    };
 
-      li.innerHTML = `
-        <a class="video-link" href="#" onclick="playAtIndex(${i})">
-          <img src="${v.thumbnail}" alt="${v.title}">
-          <span>${v.title}</span>
-        </a>
-      `;
-      list.appendChild(li);
-    }
+    div.innerHTML = `
+      <img src="${v.thumbnail}">
+      <div class="video-title">${v.title}</div>
+    `;
+    list.appendChild(div);
   }
+}
 
-  function applyVolume() {
-    if (player && player.setVolume) {
-      player.setVolume(globalVolume);
-    }
-  }
-
-  function setGlobalVolume(value) {
-    globalVolume = parseInt(value);
-    localStorage.setItem("ytVolume", globalVolume);
-    document.getElementById("volumeValue").textContent = globalVolume;
-    applyVolume();
-  }
-
-  function playAtIndex(index) {
-    currentIndex = index;
-    skipInProgress = false;
-    player.loadVideoById(shuffledVideos[currentIndex].id);
-    renderList();
-  }
-
-  function playNextVideo() {
-    currentIndex++;
-
-    if (currentIndex >= shuffledVideos.length) {
-      document.getElementById("status").textContent =
-        "Playlist finished 🎉";
-      return;
-    }
-
-    skipInProgress = false;
-    player.loadVideoById(shuffledVideos[currentIndex].id);
-    renderList();
-  }
-
-  function startShuffle() {
-    shuffleVideos();
-    skipInProgress = false;
-    player.loadVideoById(shuffledVideos[0].id);
-    renderList();
-  }
-
-  function onYouTubeIframeAPIReady() {
-    player = new YT.Player("player", {
-      height: "405",
-      width: "720",
-      events: {
-        onReady: () => applyVolume(),
-        onStateChange: onPlayerStateChange,
-        onError: onPlayerError
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player("player", {
+    events: {
+      onReady: () => {
+        player.setVolume(globalVolume);
+        document.getElementById("volumeSlider").value = globalVolume;
+      },
+      onStateChange: e => {
+        if (e.data === YT.PlayerState.ENDED) playNext();
+      },
+      onError: () => {
+        if (skipInProgress) return;
+        skipInProgress = true;
+        playNext();
+        skipInProgress = false;
       }
-    });
-  }
-
-  function onPlayerStateChange(event) {
-    if (event.data === YT.PlayerState.ENDED) {
-      playNextVideo();
     }
-  }
+  });
+}
 
-  function onPlayerError() {
-    if (skipInProgress) return;
-    skipInProgress = true;
-    playNextVideo();
-  }
+document.getElementById("volumeSlider").oninput = e => {
+  globalVolume = e.target.value;
+  localStorage.setItem("ytVolume", globalVolume);
+  if (player) player.setVolume(globalVolume);
+};
 
-  window.onload = loadVideosFromJSON;
+window.onload = loadVideos;
 </script>
 
 </body>
