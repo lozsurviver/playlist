@@ -29,6 +29,15 @@
       margin: 20px 0;
     }
 
+    #controls {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    #volumeValue {
+      font-weight: bold;
+    }
+
     #status {
       margin-top: 15px;
       color: #555;
@@ -57,10 +66,6 @@
       margin-right: 10px;
       object-fit: cover;
     }
-
-    a.video-link:hover {
-      text-decoration: underline;
-    }
   </style>
 </head>
 <body>
@@ -76,6 +81,19 @@
   <div id="player"></div>
 </div>
 
+<div id="controls">
+  🔊 Volume:
+  <input
+    type="range"
+    id="volumeSlider"
+    min="0"
+    max="100"
+    value="50"
+    oninput="setGlobalVolume(this.value)"
+  >
+  <span id="volumeValue">50</span>
+</div>
+
 <div id="status">Loading videos...</div>
 
 <ul id="videoList"></ul>
@@ -89,6 +107,9 @@
   let player;
   let skipInProgress = false;
 
+  // Load saved volume or default to 50
+  let globalVolume = parseInt(localStorage.getItem("ytVolume")) || 50;
+
   async function loadVideosFromJSON() {
     const response = await fetch("videos.json");
     const data = await response.json();
@@ -96,6 +117,10 @@
 
     document.getElementById("status").textContent =
       `Loaded ${allVideos.length} videos ✅`;
+
+    // Restore slider UI
+    document.getElementById("volumeSlider").value = globalVolume;
+    document.getElementById("volumeValue").textContent = globalVolume;
   }
 
   function shuffleVideos() {
@@ -124,6 +149,19 @@
       `;
       list.appendChild(li);
     }
+  }
+
+  function applyVolume() {
+    if (player && player.setVolume) {
+      player.setVolume(globalVolume);
+    }
+  }
+
+  function setGlobalVolume(value) {
+    globalVolume = parseInt(value);
+    localStorage.setItem("ytVolume", globalVolume);
+    document.getElementById("volumeValue").textContent = globalVolume;
+    applyVolume();
   }
 
   function playAtIndex(index) {
@@ -159,6 +197,7 @@
       height: "405",
       width: "720",
       events: {
+        onReady: () => applyVolume(),
         onStateChange: onPlayerStateChange,
         onError: onPlayerError
       }
@@ -171,12 +210,9 @@
     }
   }
 
-  function onPlayerError(event) {
-    // Prevent infinite error loops
+  function onPlayerError() {
     if (skipInProgress) return;
-
     skipInProgress = true;
-    console.warn("Video unavailable, skipping…", shuffledVideos[currentIndex].id);
     playNextVideo();
   }
 
