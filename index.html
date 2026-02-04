@@ -25,11 +25,20 @@
       color: #555;
     }
     ol li {
-      margin-bottom: 5px;
+      margin-bottom: 10px;
+      list-style: none;
     }
     a {
       color: #1a73e8;
       text-decoration: none;
+      display: flex;
+      align-items: center;
+    }
+    a img {
+      margin-right: 10px;
+      width: 120px;
+      height: 90px;
+      object-fit: cover;
     }
     a:hover {
       text-decoration: underline;
@@ -48,64 +57,74 @@
   <div id="status">Loading videos...</div>
 
   <script>
-let allVideos = [];
-let currentShuffle = [];
+    let allVideos = [];      // Stores all videos from videos.json
+    let currentShuffle = []; // Current shuffled playlist
 
-async function loadVideosFromJSON() {
-  try {
-    const response = await fetch("videos.json");
-    const data = await response.json();
-    allVideos = data.videos;
-    document.getElementById("status").textContent = `Loaded ${allVideos.length} videos ✅`;
-    console.log(`Loaded ${allVideos.length} videos`);
-  } catch (err) {
-    console.error("Error loading videos.json:", err);
-    document.getElementById("status").textContent = "Failed to load videos.json";
-  }
-}
+    // Load videos.json
+    async function loadVideosFromJSON() {
+      try {
+        const response = await fetch("videos.json");
+        const data = await response.json();
+        allVideos = data.videos;
 
-function shuffleVideos() {
-  currentShuffle = [...allVideos];
-  for (let i = currentShuffle.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [currentShuffle[i], currentShuffle[j]] = [currentShuffle[j], currentShuffle[i]];
-  }
-}
+        console.log("First video object check:", allVideos[0]); // <-- extra check
+        document.getElementById("status").textContent = `Loaded ${allVideos.length} videos ✅`;
+      } catch (err) {
+        console.error("Error loading videos.json:", err);
+        document.getElementById("status").textContent = "Failed to load videos.json";
+      }
+    }
 
-function displayShuffledVideos(count = 10) {
-  const status = document.getElementById("status");
-  if (currentShuffle.length === 0) {
-    status.textContent = "No videos to shuffle.";
-    return;
-  }
+    // Shuffle using Fisher-Yates algorithm
+    function shuffleVideos() {
+      currentShuffle = [...allVideos];
+      for (let i = currentShuffle.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [currentShuffle[i], currentShuffle[j]] = [currentShuffle[j], currentShuffle[i]];
+      }
+    }
 
-  let html = "<h3>Shuffled Playlist:</h3><ol>";
-  for (let i = 0; i < Math.min(count, currentShuffle.length); i++) {
-    const video = currentShuffle[i];
-    html += `<li>
-      <a href="https://www.youtube.com/watch?v=${video.id}" target="_blank">
-        <img src="${video.thumbnail}" alt="${video.title}" style="width:120px; vertical-align:middle; margin-right:10px;">
-        ${video.title}
-      </a>
-    </li>`;
-  }
-  html += "</ol>";
-  status.innerHTML = html;
-}
+    // Display first N shuffled videos with thumbnail and title
+    function displayShuffledVideos(count = 10) {
+      const status = document.getElementById("status");
+      if (currentShuffle.length === 0) {
+        status.textContent = "No videos to shuffle.";
+        return;
+      }
 
-function handleShuffle() {
-  if (allVideos.length === 0) {
-    document.getElementById("status").textContent = "Videos not loaded yet.";
-    return;
-  }
-  shuffleVideos();
-  displayShuffledVideos();
-}
+      let html = "<h3>Shuffled Playlist:</h3><ol>";
+      for (let i = 0; i < Math.min(count, currentShuffle.length); i++) {
+        const video = currentShuffle[i];
+        html += `<li>
+          <a href="https://www.youtube.com/watch?v=${video.id}" target="_blank">
+            <img src="${video.thumbnail}" alt="${video.title}">
+            <span>${video.title}</span>
+          </a>
+        </li>`;
+      }
+      html += "</ol>";
+      status.innerHTML = html;
+    }
 
-function handleNextShuffle() {
-  shuffleVideos();
-  displayShuffledVideos();
-}
+    // Shuffle button
+    function handleShuffle() {
+      if (allVideos.length === 0) {
+        document.getElementById("status").textContent = "Videos not loaded yet.";
+        return;
+      }
+      shuffleVideos();
+      displayShuffledVideos();
+    }
 
-window.onload = loadVideosFromJSON;
-</script>
+    // Next shuffle button
+    function handleNextShuffle() {
+      shuffleVideos();
+      displayShuffledVideos();
+    }
+
+    // Load videos.json on page load
+    window.onload = loadVideosFromJSON;
+  </script>
+
+</body>
+</html>
