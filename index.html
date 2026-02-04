@@ -69,7 +69,7 @@
 
 <div style="text-align:center;">
   <button onclick="startShuffle()">Shuffle & Play</button>
-  <button onclick="nextShuffle()">Next Shuffle</button>
+  <button onclick="playNextVideo()">Skip Video</button>
 </div>
 
 <div id="player-container">
@@ -80,7 +80,6 @@
 
 <ul id="videoList"></ul>
 
-<!-- YouTube Player API -->
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
@@ -88,13 +87,13 @@
   let shuffledVideos = [];
   let currentIndex = 0;
   let player;
+  let skipInProgress = false;
 
   async function loadVideosFromJSON() {
     const response = await fetch("videos.json");
     const data = await response.json();
     allVideos = data.videos;
 
-    console.log("First video check:", allVideos[0]);
     document.getElementById("status").textContent =
       `Loaded ${allVideos.length} videos ✅`;
   }
@@ -129,37 +128,39 @@
 
   function playAtIndex(index) {
     currentIndex = index;
+    skipInProgress = false;
     player.loadVideoById(shuffledVideos[currentIndex].id);
     renderList();
   }
 
   function playNextVideo() {
     currentIndex++;
-    if (currentIndex < shuffledVideos.length) {
-      player.loadVideoById(shuffledVideos[currentIndex].id);
-      renderList();
+
+    if (currentIndex >= shuffledVideos.length) {
+      document.getElementById("status").textContent =
+        "Playlist finished 🎉";
+      return;
     }
+
+    skipInProgress = false;
+    player.loadVideoById(shuffledVideos[currentIndex].id);
+    renderList();
   }
 
   function startShuffle() {
     shuffleVideos();
+    skipInProgress = false;
     player.loadVideoById(shuffledVideos[0].id);
     renderList();
   }
 
-  function nextShuffle() {
-    shuffleVideos();
-    player.loadVideoById(shuffledVideos[0].id);
-    renderList();
-  }
-
-  // YouTube API callback
   function onYouTubeIframeAPIReady() {
     player = new YT.Player("player", {
       height: "405",
       width: "720",
       events: {
-        onStateChange: onPlayerStateChange
+        onStateChange: onPlayerStateChange,
+        onError: onPlayerError
       }
     });
   }
@@ -168,6 +169,15 @@
     if (event.data === YT.PlayerState.ENDED) {
       playNextVideo();
     }
+  }
+
+  function onPlayerError(event) {
+    // Prevent infinite error loops
+    if (skipInProgress) return;
+
+    skipInProgress = true;
+    console.warn("Video unavailable, skipping…", shuffledVideos[currentIndex].id);
+    playNextVideo();
   }
 
   window.onload = loadVideosFromJSON;
